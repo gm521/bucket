@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<h1>Bucket Script Compiler</h1>
+Bucket script is a programming language
+used to program a working computer
+in vanilla minecraft
+
+<h2>Links</h2>
+<p onclick="document.location.href='gm521.github.io/bucket/docs/'">API docs</p>
+<br />
+<br />
+<br />
+Write code in here:
+<div class=c id=i style="height: 512px;" contenteditable>
+</div>
+<br />
+<button onclick=compile();>Compile</button>
+<br />
+<br />
+Output
+<div class=c style="color: red;" id=d>
+<br />
+</div>
+<br />
+<br />
+<button onclick=clr();>Clear</button>
+<canvas id=cnv>
+</canvas>
+<script>
+  if (localStorage.getItem("bucket") == undefined) {
+    localStorage.setItem("bucket", "");
+  }
+  i.innerHTML = localStorage.getItem("bucket");
+  setInterval(() => {
+    localStorage.setItem("bucket", i.innerHTML);
+  }, 500);
+
+  const ctx = cnv.getContext("2d");
+
+  function clr() {
+    try {
+      i.innerHTML = "";
+      d.innerHTML = "<br />";
+      localStorage.clear();
+    } catch(err) {
+      d.innerHTML = err;
+    }
+  }
+
+  function compile(src=i.innerText) {
+    try {
+      r = "";
+      let b = src.split("\n");
+      for (y in b) {
+        t = b[y].toString();
+        pt = t.slice(0, 2);
+        cde = t.slice(3)
+        if (!/^\d+$/.test(pt)) {
+          throw new SyntaxError(`Invalid line number at line ${Number(y)+1}, char 1 :(`);
+        }
+        if (t[2] != ':') {
+          throw new SyntaxError(`Line not properly formatted at line ${Number(y)+1}, char ${3 + pt.length-2} :(`);
+        }
+        pts = `execute if score pt register matches ${pt} run `;
+        if (cde[cde.length-1]!=';') {
+          throw new SyntaxError(`Expected ';' at line ${Number(y)+1}, char ${cde.length-1} :(`);
+        }
+        if (cde.replace(" ","").startsWith("jump")) {
+          sIndx = cde.indexOf('(');
+          eIndx = cde.indexOf(')')
+          jstr = cde.substring(sIndx, eIndx).slice(1);
+          cde = `scoreboard players set pt register ${jstr}`
+        }
+        if (cde.replace(" ","").startsWith("print")) {
+          sIndx = cde.indexOf('(');
+          eIndx = cde.indexOf(')')
+          pstr = cde.substring(sIndx, eIndx).slice(1);
+          ssc = -1;
+          pjsn = {rawtext:[]};
+          pa = pstr.split('"');
+          for (w = 0; w <= pa.length; w+=2) {
+            if (w % 2 == 0) {
+              pjsn.rawtext[w-2]={text:pa[w-1]}
+            } else {
+              pjsn.rawtext[w-2]={score:pa[w-1]}
+            }
+          }
+          cde = `tellraw @a ${JSON.stringify(pjsn)}`
+        }
+        r += pts + cde + "<br />";
+      }
+      d.innerHTML=`<font color=white>${r}</font>`;
+    } catch(err) {
+      d.innerHTML = err;
+    }
+  }
+</script>
+
+<style>
+  body {
+    color: #FFFFFF;
+    background-color: #5E5E60;
+    font-family: "Arial";
+  }
+  .c {
+    color: #FFFFFF;
+    background-color: #2E2E30;
+    font-family: "monospace";
+    height: 40px;
+    border-radius: 10px;
+    padding: 10px;
+    height: min-content;
+  }
+  button {
+    background-color: #4E4E4E;
+    border-style: solid;
+    border-color: black;
+    border-radius: 10px;
+    padding: 30px;
+    font-family: "Arial";
+    color: white;
+    font-size: 20px;
+  }
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    # z-index is 2^16
+    z-index: 65535
+  }
+</style>
