@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<h1>Bucket Script Compiler</h1>
+Bucket script is a programming language
+used to program a working computer
+in vanilla minecraft
+
+<h2>Links</h2>
+<p onclick="document.location.href='gm521.github.io/bucket/docs/'">API docs</p>
+<br />
+<br />
+<br />
+Write code in here:
+<div class=c id=i style="height: 512px;" contenteditable>
+</div>
+<br />
+<button onclick=compile();>Compile</button>
+<br />
+<br />
+Output
+<div class=c style="color: red;" id=d>
+<br />
+</div>
+<br />
+<br />
+<button onclick=clr();>Clear</button>
+<canvas id=cnv>
+</canvas>
+<script>
+  if (localStorage.getItem("bucket") == undefined) {
+    localStorage.setItem("bucket", "");
+  }
+  i.innerHTML = localStorage.getItem("bucket");
+  setInterval(() => {
+    localStorage.setItem("bucket", i.innerHTML);
+  }, 500);
+
+  const ctx = cnv.getContext("2d");
+  function floor(x) {
+    return Math.floor(x);
+  }
+  function rnd(min,max) {
+    return (Math.random() * max) + min
+  }
+  function clr() {
+    try {
+      i.innerHTML = "";
+      d.innerHTML = "<br />";
+      localStorage.clear();
+    } catch(err) {
+      d.innerHTML = err;
+    }
+  }
+
+  re = 0;
+  ifstack = [];
+
+  x = 1e309;
+  y = 1e309;
+  pt = 1e309;
+
+  smd = 1;
+  const colr = ["white","orange","magenta","light_blue","yellow","lime","pink","gray","light_gray","cyan","purple","blue","brown","green","red","black"];
+  const reg = ["x","y","pt"];
+  const op = ["%=", "*=", "/=", "+=", "-=", "<", ">", "!", "="];
+  function compile(src=i.innerText) {
+    try {
+      re = 0;
+      ifstack = [];
+      r = "";
+      let b = src.split("\n");
+      for (y in b) {
+      b[y] = b[y].replaceAll(" ","").split("**")[0]
+      if (b[y].length != 0 && !b[y].replaceAll(" ","").startsWith("end")) {
+        t = b[y].toString();
+        pt = t.slice(0, 2);
+        cde = t.slice(3);
+        if (!/^\d+$/.test(pt)) {
+          throw new SyntaxError(`Invalid line number at line ${Number(y)+1}, char 1 :(`);
+        }
+        if (t[2] != ':') {
+          throw new SyntaxError(`Line not properly formatted (expected a ':') at line ${Number(y)+1}, char ${3 + pt.length-2} :(`);
+        }
+        pts = `execute if score pt register matches ${Number(pt)-re} run `;
+       if (b[y][b[y].length-1]!=';' && !b[y].includes("if")) {
+          throw new SyntaxError(`Expected ';' at line ${Number(y)+1}, char ${b[y].length} :(`);
+        }
+        for (rgr in reg) {
+          if (cde.replace(" ","").startsWith(reg[rgr])) {
+            for (ut in op) {
+              if (cde.includes(op[ut])) {
+                opr1 = cde.split(op[ut])[0].replaceAll(" ","");
+                opt = op[ut].replaceAll(" ","");
+                opr2 = cde.split(op[ut])[1].replace(";","").replaceAll(" ","");
+                break;
+              }
+            }
+            if (!reg.includes(opr2)) {
+              if (opt == "=") {
+                cde = `scoreboard players set ${opr1} register ${eval(opr2)}`
+              }
+              if (opt == "+=") {
+                cde = `scoreboard players add ${opr1} register ${eval(opr2)}`
+              }
+              if (opt == "-=") {
+                cde = `scoreboard players remove ${opr1} register ${eval(opr2)}`
+              }
+            } else {
+              cde = `scoreboard players operation ${opr1} register ${opt} ${opr2} register`
+            }
+          }
+        }
+        if (cde.replace(" ","").startsWith("if")) {
+          re -= 1;
+          
+          sIndx1 = cde.indexOf('(',1);
+          eIndx1 = cde.indexOf(')',1);
+         
+          sIndx2 = cde.indexOf('(',2);
+          eIndx2 = cde.indexOf(')',2);
+          
+          cond = cde.substring(sIndx1, eIndx1).slice(1);
+          fp = cde.substring(sIndx2, eIndx2).slice(1);
+          
+          for (rgr in reg) {
+            if (cde.replace(" ","").startsWith(reg[rgr])) {
+              for (ut in op) {
+                if (cde.includes(op[ut])) {
+                  opr1 = cde.split(op[ut])[0].replaceAll(" ","");
+                  opt = op[ut].replaceAll(" ","");
+                  opr2 = cde.split(op[ut])[1].replace(";","").replaceAll(" ","");
+                  break;
+                }
+              }
+            }
+          }    
+          ifs = `execute if ${fn} ${opr1} ${opt} ${opr2} run `
+          ifstack.push(ifs);
+          continue;
+        }
+        if (cde.replace(" ","").startsWith("mode")) {
+          sIndx = cde.indexOf('(');
+          eIndx = cde.indexOf(')');
+          mint = cde.substring(sIndx, eIndx).slice(1);
+          smd = Number(mint);
+          re ++;
+          continue;
+        }
+    if (cde.replace(" ","").startsWith("pset")) {
+          sIndx = cde.indexOf('(');
+          eIndx = cde.indexOf(')');
+          parg = cde.substring(sIndx, eIndx).slice(1).split(",");
+          j = Number(parg[2])%16
+          blk = "concrete";
+          if (Number(parg[2])>=16) {
+            blk = "stained_hardened_clay";
+          }
+          if (Number(parg[2])>=32) {
+            blk = "wool";
+          }
+          if (Number(parg[2])>=48) {
+            blk = "concrete_powder";
+          }
+          if (Number(parg[2])>=64) {
+            blk = "bedrock"
+            parg[2]="";
+          }
+          if (blk == "wool") {
+            plcmd = `${colr[j]}_${blk}`;
+          } else {
+            plcmd = `${blk} ["color":"${colr[j]}"]`;
+          }
+          if (blk == "bedrock") {
+            plcmd = blk;
+          }
+          cde = `setblock ${Number(parg[0])} ${-54+Number(parg[1])} 4 ${plcmd}`;
+        }
+        if (cde.replace(" ","").startsWith("jump")) {
+          sIndx = cde.indexOf('(');
+          eIndx = cde.indexOf(')');
+          jint = cde.substring(sIndx, eIndx).slice(1);
+          cde = `scoreboard players set pt register ${eval(jint)}`
+        }
+        if (cde.replace(" ","").startsWith("print")) {
+          sIndx = cde.indexOf('(');
+          eIndx = cde.indexOf(')');
+          pstr = cde.substring(sIndx, eIndx).slice(1);
+          ssc = -1;
+          pjsn = {rawtext:[]};
+          pa = pstr.split('"');
+          for (w in pa) {
+            if (w != 0 && w != pa.length-1) {
+              pjsn.rawtext[w] = {text:pa[w]}
+            }
+            if (w%2 == 0 && w != pa.length && pa[w].length > 0) {
+              pjsn.rawtext[w] = {score:{name:pa[w].replaceAll(" ","").replaceAll("+",""),objective:"register"}}
+            }
+          }
+          pjsn.rawtext = pjsn.rawtext.filter(nl => nl)
+          cde = `tellraw @a ${JSON.stringify(pjsn)}`;
+        }
+        r += pts + cde + "<br />";
+      }
+      if (b[y].replace(" ","").startsWith("end")) {
+          cde = "execute if score pt register matches 100 run scoreboard players set pt register -20";
+          r += ifstack.join(" ") + cde + "<br />";
+      }
+      }
+      d.innerHTML=`<font color=white>${r}</font>`;
+    } catch(err) {
+      d.innerHTML = err;
+    }
+  }
+</script>
+
+<style>
+  body {
+    color: #FFFFFF;
+    background-color: #5E5E60;
+    font-family: "Arial";
+  }
+  .c {
+    color: #FFFFFF;
+    background-color: #2E2E30;
+    font-family: "monospace";
+    height: 40px;
+    border-radius: 10px;
+    padding: 10px;
+    height: min-content;
+  }
+  button {
+    background-color: #4E4E4E;
+    border-style: solid;
+    border-color: black;
+    border-radius: 10px;
+    padding: 30px;
+    font-family: "Arial";
+    color: white;
+    font-size: 20px;
+  }
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    # z-index is 2^16
+    z-index: 65535
+  }
+</style>
